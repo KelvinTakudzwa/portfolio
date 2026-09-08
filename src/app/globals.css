@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0a0d0f;
+}
+
+::selection {
+  background: #39d98a;
+  color: #0a0d0f;
+}
+
+/* Telemetry grid backdrop */
+.telemetry-grid {
+  background-image:
+    linear-gradient(rgba(57, 217, 138, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57, 217, 138, 0.07) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* Corner bracket frame, used on hero + panels */
+.bracket {
+  position: relative;
+}
+.bracket::before,
+.bracket::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: #39d98a;
+  opacity: 0.6;
+}
+.bracket::before {
+  top: -1px;
+  left: -1px;
+  border-top: 1.5px solid;
+  border-left: 1.5px solid;
+}
+.bracket::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 1.5px solid;
+  border-right: 1.5px solid;
+}
+
+/* Scanning sweep line inside the hero panel */
+.scanline {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.scanline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(57, 217, 138, 0.06),
+    transparent
+  );
+  animation: scan 7s linear infinite;
+}
+
+.pulse-rule {
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(57, 217, 138, 0.9) 0 6px,
+    transparent 6px 14px
+  );
+  background-size: 200% 100%;
+  animation: pulseline 3.5s linear infinite;
+}
+
+.status-dot {
+  box-shadow: 0 0 6px currentColor;
+}
+
+/* Nav link underline: grows from center, not a full-width CSS transition
+   swap, so it reads as a deliberate targeting reticle rather than a
+   default hover state. */
+.nav-link {
+  position: relative;
+  transition: color 0.2s ease;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 1px;
+  background: #39d98a;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-link:hover {
+  color: #39d98a;
+}
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanline::after {
+    animation: none;
+  }
+  .pulse-rule {
+    animation: none;
+  }
+  .animate-blink {
+    animation: none;
+    opacity: 1;
+  }
+  .nav-link::after {
+    transition: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
