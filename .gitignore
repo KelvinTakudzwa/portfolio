@@ -33,3 +33,6 @@ next-env.d.ts
 
 # harness-internal, not part of the project
 /.claude/
+
+.vercel
+.env*
