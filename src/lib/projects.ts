@@ -13,6 +13,7 @@ export type Project = {
   stats: Stat[];
   sections: Section[];
   media?: Media[];
+  liveUrl?: string;
 };
 
 export const projects: Project[] = [
@@ -169,6 +170,7 @@ export const projects: Project[] = [
     title: "CloudKitchen: Tuckshop Management System",
     tagline:
       "A cloud-hosted POS and inventory-management platform for a campus tuckshop/canteen at CUT, letting a vendor reach students beyond queue capacity and foot traffic.",
+    liveUrl: "https://tuckshop-management-system.vercel.app",
     status: "",
     stack: [
       "Vue.js",

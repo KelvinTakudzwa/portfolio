@@ -51,11 +51,23 @@ export default function ProjectPage({
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted">
             {project.tagline}
           </p>
-          {project.status && (
-            <p className="mt-4 inline-block border border-green/40 px-3 py-1 font-mono text-xs text-green">
-              {project.status}
-            </p>
-          )}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {project.status && (
+              <p className="inline-block border border-green/40 px-3 py-1 font-mono text-xs text-green">
+                {project.status}
+              </p>
+            )}
+            {project.liveUrl && (
+              <a
+                href={project.liveUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block border border-amber/40 px-3 py-1 font-mono text-xs text-amber transition-colors hover:bg-amber hover:text-bg"
+              >
+                LIVE DEMO ↗
+              </a>
+            )}
+          </div>
         </Reveal>
       </section>
 
