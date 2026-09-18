@@ -1,0 +1,37 @@
+{
+  "_comment": "Edit freely. Matching is case-insensitive against each job's title + tags + company. A job matches if ANY keyword hits.",
+  "keywords": [
+    "embedded",
+    "embedded systems",
+    "esp32",
+    "firmware",
+    "iot",
+    "internet of things",
+    "computer engineer",
+    "electrical engineer",
+    "machine learning",
+    "ml engineer",
+    "mlops",
+    "data engineer",
+    "backend engineer",
+    "full stack",
+    "fullstack",
+    "full-stack",
+    "react native",
+    "node.js",
+    "nodejs",
+    "python developer",
+    "fastapi",
+    "systems engineer",
+    "software engineer",
+    "junior developer",
+    "graduate engineer",
+    "graduate software"
+  ],
+  "excludeKeywords": [
+    "senior staff",
+    "principal engineer",
+    "10+ years",
+    "8+ years"
+  ]
+}

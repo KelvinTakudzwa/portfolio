@@ -1,0 +1,13 @@
+{
+  "name": "job-watcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Watches open job-board feeds for postings matching a keyword profile and pings a Telegram bot with new matches.",
+  "type": "module",
+  "scripts": {
+    "watch": "node watch.mjs"
+  },
+  "dependencies": {
+    "fast-xml-parser": "5.11.1"
+  }
+}

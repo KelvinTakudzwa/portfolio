@@ -1,0 +1,43 @@
+name: Job Watcher
+
+on:
+  schedule:
+    # Every 3 hours, off the :00 mark on purpose.
+    - cron: "13 */3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: job-watcher
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install
+        working-directory: job-watcher
+        run: npm ci
+
+      - name: Run watcher
+        working-directory: job-watcher
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: npm run watch
+
+      - name: Commit updated seen list
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add job-watcher/seen.json
+          git diff --cached --quiet || git commit -m "chore(job-watcher): update seen list [skip ci]"
+          git push
