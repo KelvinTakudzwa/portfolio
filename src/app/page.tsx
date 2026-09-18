@@ -2,6 +2,11 @@ import Link from "next/link";
 import { projects } from "@/lib/projects";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { Readout } from "@/components/motion/Readout";
+import NetworkBackground from "@/components/NetworkBackground";
+import SolarGridDiagram from "@/components/diagrams/SolarGridDiagram";
+import SilicaGuardDiagram from "@/components/diagrams/SilicaGuardDiagram";
+import { HudPanel, HudRow } from "@/components/HudPanel";
+import Waveform from "@/components/Waveform";
 
 const stats = [
   {
@@ -62,48 +67,119 @@ export default function Home() {
   return (
     <div>
       {/* HERO */}
-      <section className="relative overflow-hidden border-b border-line telemetry-grid">
+      <section className="relative min-h-[720px] overflow-hidden border-b border-line telemetry-grid lg:min-h-[860px]">
+        <NetworkBackground />
         <div className="scanline" />
-        <RevealGroup className="mx-auto max-w-6xl px-6 py-24 sm:py-32">
+
+        {/* Decorative system-scene layer: diagrams + HUD panels, desktop only */}
+        <div className="pointer-events-none absolute inset-0 hidden lg:block">
+          <div
+            className="diagram-float absolute left-[34%] top-4 w-[300px] text-green/60"
+            style={{ animationDelay: "0.3s" }}
+          >
+            <SolarGridDiagram />
+            <p className="mt-1 font-mono text-[10px] leading-tight text-green/70">
+              HMLD, SOLAR MINI-GRIDS
+              <br />
+              HIERARCHICAL DIAGNOSTICS{" "}
+              <span className="text-green">[ACTIVE]</span>
+            </p>
+          </div>
+
+          <div
+            className="diagram-float absolute right-10 top-16 w-[150px] text-green/60"
+            style={{ animationDelay: "1.4s" }}
+          >
+            <SilicaGuardDiagram />
+          </div>
+          <p className="absolute right-10 top-[19rem] w-[220px] text-right font-mono text-[10px] leading-tight text-green/70">
+            SILICAGUARD, SILICOSIS SCREENING
+            <br />
+            PLATFORM <span className="text-green">[READY]</span>
+          </p>
+
+          <HudPanel
+            title="DATA INTEGRATION"
+            className="absolute right-[19rem] top-40 w-[210px]"
+          >
+            <HudRow label="HMLD" value="SOLAR MINI-GRID" />
+            <HudRow label="SILICAGUARD" value="SCREENING" tone="amber" />
+            <HudRow label="LINK STATUS" value="SYNCED" />
+          </HudPanel>
+
+          <HudPanel
+            title="SYSTEM STATUS"
+            className="absolute bottom-28 right-10 w-[220px]"
+          >
+            <HudRow label="CORE NODES" value="4 ACTIVE" />
+            <HudRow label="ANOMALY DETECTION" value="ON" />
+            <HudRow label="NETWORK MESH" value="STABLE" />
+            <HudRow label="ML ENGINE" value="OPERATIONAL" />
+          </HudPanel>
+        </div>
+
+        <RevealGroup className="relative z-10 mx-auto max-w-6xl px-6 py-24 sm:py-32">
           <RevealItem>
-            <div className="bracket inline-block px-4 py-1 font-mono text-xs tracking-widest text-green">
+            <div className="bracket glass-panel inline-block px-4 py-1 font-mono text-xs tracking-widest text-green">
               SYSTEM ONLINE · SESSION ESTABLISHED
               <span className="ml-1 animate-blink">▮</span>
             </div>
           </RevealItem>
           <RevealItem>
-            <h1 className="mt-8 max-w-3xl text-4xl font-semibold leading-tight text-fg sm:text-6xl">
-              I build systems that watch things{" "}
-              <span className="text-green">nobody else is watching.</span>
-            </h1>
+            <div className="glass-panel mt-8 max-w-3xl rounded-lg p-6">
+              <h1 className="text-4xl font-semibold leading-tight text-fg sm:text-6xl">
+                I build systems that watch things{" "}
+                <span className="text-green">nobody else is watching.</span>
+              </h1>
+            </div>
           </RevealItem>
           <RevealItem>
-            <p className="mt-6 max-w-2xl font-mono text-sm leading-relaxed text-muted sm:text-base">
-              Takudzwa Kelvin Mukaro, Computer Engineering graduate (First
-              Class). Embedded sensing, ML diagnostics, and full-stack delivery,
-              applied to problems that don&apos;t have convenient
-              infrastructure: off-grid solar equipment nobody drives out to
-              check, and artisanal miners no clinic reliably reaches.
-            </p>
+            <div className="glass-panel mt-6 max-w-2xl rounded-lg p-6">
+              <p className="font-mono text-sm leading-relaxed text-muted sm:text-base">
+                Takudzwa Kelvin Mukaro, Computer Engineering graduate (First
+                Class). Embedded sensing, ML diagnostics, and full-stack
+                delivery, applied to problems that don&apos;t have convenient
+                infrastructure: off-grid solar equipment nobody drives out to
+                check, and artisanal miners no clinic reliably reaches.
+              </p>
+            </div>
           </RevealItem>
           <RevealItem>
             <div className="mt-10 flex flex-wrap gap-4">
               <Link
                 href="#systems"
-                className="border border-green px-5 py-3 font-mono text-xs tracking-widest text-green transition-all duration-200 hover:bg-green hover:text-bg active:scale-95"
+                className="group flex items-center gap-2 rounded-sm border border-green px-5 py-3 font-mono text-xs tracking-widest text-green transition-all duration-200 hover:bg-green hover:text-bg active:scale-95"
               >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M0 7h3l1.5-4L8 11l1.5-4H14"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                  />
+                </svg>
                 VIEW CORE SYSTEMS →
               </Link>
               <Link
                 href="/contact"
-                className="border border-line px-5 py-3 font-mono text-xs tracking-widest text-muted transition-all duration-200 hover:border-muted hover:text-fg active:scale-95"
+                className="rounded-sm border border-line px-5 py-3 font-mono text-xs tracking-widest text-muted transition-all duration-200 hover:border-muted hover:text-fg active:scale-95"
               >
                 CONTACT
               </Link>
             </div>
           </RevealItem>
           <RevealItem>
-            <div className="pulse-rule mt-16 max-w-md" />
+            <div className="mt-16 max-w-md">
+              <Waveform />
+              <p className="mt-2 font-mono text-[11px] text-dim">
+                SYSTEM_LOAD: <span className="text-green">OPTIMAL</span> [||||.......]
+              </p>
+            </div>
           </RevealItem>
         </RevealGroup>
       </section>

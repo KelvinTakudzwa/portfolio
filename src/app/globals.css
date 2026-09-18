@@ -90,6 +90,46 @@ body {
   box-shadow: 0 0 6px currentColor;
 }
 
+/* Floating HUD glass panel: used for hero data-readout cards. */
+.glass-panel {
+  background: rgba(16, 21, 26, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(57, 217, 138, 0.25);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Equalizer / waveform bars: each bar's height is driven by an inline
+   --h custom property, animation adds a slow shimmer on top. */
+.eq-bar {
+  width: 3px;
+  transform-origin: bottom;
+  animation: eqpulse 2.6s ease-in-out infinite;
+}
+@keyframes eqpulse {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.55);
+  }
+}
+
+/* Slow vertical drift for hero diagram illustrations, subtle parallax life. */
+.diagram-float {
+  animation: diagramfloat 8s ease-in-out infinite;
+}
+@keyframes diagramfloat {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
 /* Nav link underline: grows from center, not a full-width CSS transition
    swap, so it reads as a deliberate targeting reticle rather than a
    default hover state. */
@@ -129,6 +169,10 @@ body {
   }
   .nav-link::after {
     transition: none;
+  }
+  .eq-bar,
+  .diagram-float {
+    animation: none;
   }
   html {
     scroll-behavior: auto;
