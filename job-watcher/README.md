@@ -12,6 +12,22 @@ this kind of use:
 - [RemoteOK](https://remoteok.com/api) (JSON API)
 - [Arbeitnow](https://www.arbeitnow.com/api/job-board-api) (JSON API)
 - [WeWorkRemotely](https://weworkremotely.com/categories/remote-programming-jobs.rss) (RSS)
+- [VacancyBox](https://vacancybox.co.zw) — Zimbabwe (WordPress REST API,
+  `/wp-json/wp/v2/job-listings`; not an advertised developer API, but it's
+  WordPress's own public REST endpoint, unauthenticated, and `robots.txt`
+  doesn't disallow it)
+- [VacancyMail](https://vacancymail.co.zw) — Zimbabwe (RSS feed, `/feed/`)
+- [Adzuna](https://developer.adzuna.com) — Australia, Canada, Germany,
+  Poland, South Africa (real developer API, free signup required; queried
+  per-country against its `it-jobs` category, sorted newest-first, then
+  filtered by the same title matching as every other source)
+
+VacancyBox and VacancyMail routinely cross-post the exact same listing
+(same title, same company). `watch.mjs` drops later duplicates between
+those two sources by normalized title before matching/notifying, so a
+cross-listed posting only fires once. **HotZimbabweJobs was checked and
+deliberately excluded**: its `robots.txt` is `Disallow: /` (blocks
+everything), which is an explicit "don't crawl this" signal.
 
 For LinkedIn/Indeed specifically, set up their own native job alerts for
 your search terms — they already do the watching reliably; this tool
@@ -21,11 +37,14 @@ covers what they don't.
 
 1. Every 3 hours, a GitHub Actions workflow (`.github/workflows/job-watcher.yml`)
    runs `watch.mjs`.
-2. It fetches all three sources, filters titles against `keywords.json`,
+2. It fetches all sources, filters titles against `keywords.json`,
    and compares against `seen.json` (committed back to the repo each run)
    to find what's actually new.
-3. New matches get sent to your Telegram chat, one message per job (capped
-   at 20 per run so a keyword that's too broad doesn't flood you).
+3. New matches get sent to your Telegram chat, one message per job, capped
+   at 20 per run so a keyword that's too broad doesn't flood you. Matches
+   are round-robined fairly across sources first, so a couple of
+   high-volume feeds (RemoteOK/Arbeitnow) can't crowd out the rest of the
+   cap on a busy run.
 4. The **first run ever** seeds `seen.json` with everything currently live
    and sends nothing — otherwise you'd get hit with hundreds of messages
    for jobs that have been posted for weeks.
@@ -33,6 +52,15 @@ covers what they don't.
 Matching is **title-only** on purpose. These feeds' tag data (RemoteOK
 especially) is unreliable — boosted listings get a generic tag spray
 unrelated to the actual role — so tags would just add noise.
+
+**Zimbabwe is a special case.** VacancyBox/VacancyMail postings skew toward
+sales, admin, apprenticeships, and other roles that rarely match a
+tech-specific `keywords.json` profile, but they're still the home market
+and always wanted. So those two sources **bypass keyword matching
+entirely** — every new Zim posting notifies, uncapped, ahead of the
+per-run cap — while every other source still goes through the normal
+keyword filter and shares the remaining cap slots fairly (see
+`interleaveBySource` in `watch.mjs`).
 
 ## One-time setup
 
@@ -50,6 +78,10 @@ In `github.com/KelvinTakudzwa/portfolio` → Settings → Secrets and variables
 → Actions → New repository secret:
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
+- `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` — free signup at
+  [developer.adzuna.com](https://developer.adzuna.com). Optional: if unset,
+  the Adzuna source just fails quietly per-run (logged, doesn't crash the
+  others) and you only get the Zim/remote sources.
 
 **4. Trigger it once manually**
 Actions tab → Job Watcher → Run workflow. First run just bootstraps

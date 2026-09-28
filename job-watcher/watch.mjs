@@ -51,6 +51,114 @@ async function fetchArbeitnow() {
   }));
 }
 
+// WordPress REST API (WP Job Manager plugin) — a real structured JSON
+// endpoint, not HTML scraping. robots.txt allows it. Cloudflare blocks
+// generic `curl/*` user agents on this host, so we identify honestly
+// instead of spoofing a browser.
+async function fetchVacancyBox() {
+  const res = await fetch(
+    "https://vacancybox.co.zw/wp-json/wp/v2/job-listings?per_page=50&orderby=date&order=desc",
+    { headers: { "User-Agent": "job-watcher (personal use)" } }
+  );
+  if (!res.ok) throw new Error(`VacancyBox HTTP ${res.status}`);
+  const data = await res.json();
+  return data
+    .filter((j) => j && j._filled !== 1)
+    .map((j) => ({
+      id: `vacancybox:${j.id}`,
+      title: decodeHtmlEntities(j.title?.rendered),
+      company: j._company_name || "",
+      url: j.link,
+      tags: [j._job_location].filter(Boolean),
+      source: "VacancyBox",
+    }));
+}
+
+async function fetchVacancyMail() {
+  const res = await fetch("https://vacancymail.co.zw/feed/", {
+    headers: { "User-Agent": "job-watcher (personal use)" },
+  });
+  if (!res.ok) throw new Error(`VacancyMail HTTP ${res.status}`);
+  const xml = await res.text();
+  const parser = new XMLParser({ ignoreAttributes: false });
+  const parsed = parser.parse(xml);
+  const items = parsed?.rss?.channel?.item || [];
+  const list = Array.isArray(items) ? items : [items];
+  return list
+    .filter((it) => it && it.title)
+    .map((it) => ({
+      id: `vacancymail:${it.guid?.["#text"] || it.guid || it.link}`,
+      // Titles come as "Job Title - Expiry Date: 2026-09-30"; strip the
+      // suffix for a clean title (also lets it dedupe against the same
+      // posting cross-listed on VacancyBox, which has no such suffix).
+      title: String(it.title).replace(/\s*-\s*Expiry Date:.*$/i, "").trim(),
+      company: "",
+      url: it.link,
+      tags: [],
+      source: "VacancyMail",
+    }));
+}
+
+// Adzuna: a real developer job-search API (free signup, not a scraping
+// target) covering many national job markets in one place. We hit its
+// "it-jobs" category per country, sorted newest-first, then let our own
+// title matching (below) do the real precision filtering — same approach
+// as every other source. Needs ADZUNA_APP_ID / ADZUNA_APP_KEY (free at
+// developer.adzuna.com) as env vars / GitHub Actions secrets.
+const ADZUNA_COUNTRIES = [
+  { code: "au", label: "AU" },
+  { code: "ca", label: "CA" },
+  { code: "de", label: "DE" },
+  { code: "pl", label: "PL" },
+  { code: "za", label: "ZA" },
+];
+
+async function fetchAdzunaCountry(code, label, appId, appKey) {
+  const url = new URL(`https://api.adzuna.com/v1/api/jobs/${code}/search/1`);
+  url.searchParams.set("app_id", appId);
+  url.searchParams.set("app_key", appKey);
+  url.searchParams.set("results_per_page", "50");
+  url.searchParams.set("category", "it-jobs");
+  url.searchParams.set("sort_by", "date");
+  url.searchParams.set("content-type", "application/json");
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Adzuna ${label} HTTP ${res.status}`);
+  const data = await res.json();
+  return (data.results || []).map((j) => ({
+    id: `adzuna:${code}:${j.id}`,
+    title: j.title,
+    company: j.company?.display_name || "",
+    url: j.redirect_url,
+    tags: [j.location?.display_name, label].filter(Boolean),
+    source: `Adzuna ${label}`,
+  }));
+}
+
+async function fetchAdzuna() {
+  const appId = process.env.ADZUNA_APP_ID;
+  const appKey = process.env.ADZUNA_APP_KEY;
+  if (!appId || !appKey) {
+    throw new Error(
+      "Missing ADZUNA_APP_ID / ADZUNA_APP_KEY env vars (set as GitHub Actions secrets)."
+    );
+  }
+  const results = await Promise.allSettled(
+    ADZUNA_COUNTRIES.map((c) => fetchAdzunaCountry(c.code, c.label, appId, appKey))
+  );
+  const jobs = [];
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled") {
+      jobs.push(...r.value);
+    } else {
+      console.error(
+        `Adzuna ${ADZUNA_COUNTRIES[i].label} failed:`,
+        r.reason?.message || r.reason
+      );
+    }
+  });
+  return jobs;
+}
+
 async function fetchWeWorkRemotely() {
   const res = await fetch(
     "https://weworkremotely.com/categories/remote-programming-jobs.rss"
@@ -77,7 +185,51 @@ const SOURCES = [
   { name: "RemoteOK", fn: fetchRemoteOK },
   { name: "Arbeitnow", fn: fetchArbeitnow },
   { name: "WeWorkRemotely", fn: fetchWeWorkRemotely },
+  { name: "VacancyBox", fn: fetchVacancyBox },
+  { name: "VacancyMail", fn: fetchVacancyMail },
+  { name: "Adzuna", fn: fetchAdzuna },
 ];
+
+// Zimbabwe is the priority market, not one equally-weighted source among
+// nine others — used both to dedupe cross-posted Zim listings below and
+// to give Zim matches an uncapped, guaranteed slot in main()'s notify step.
+const ZIM_SOURCES = new Set(["VacancyBox", "VacancyMail"]);
+
+function normalizeTitle(title) {
+  return String(title || "")
+    .toLowerCase()
+    .replace(/[-–—,.()/:]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function dedupeCrossPosted(jobs) {
+  const seenTitles = new Set();
+  const out = [];
+  for (const job of jobs) {
+    if (!ZIM_SOURCES.has(job.source)) {
+      out.push(job);
+      continue;
+    }
+    const key = normalizeTitle(job.title);
+    if (seenTitles.has(key)) continue;
+    seenTitles.add(key);
+    out.push(job);
+  }
+  return out;
+}
+
+function decodeHtmlEntities(s) {
+  return String(s || "")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
 
 // ---- matching ----------------------------------------------------------
 
@@ -96,6 +248,30 @@ function matches(job, keywords, excludeKeywords) {
     return false;
   }
   return keywords.some((k) => haystack.includes(k.toLowerCase()));
+}
+
+// Fair-share ordering across sources: first job from each source in turn,
+// then second from each, etc. Used so the per-run notification cap doesn't
+// get monopolized by whichever source happens to have the most listings.
+function interleaveBySource(jobs) {
+  const bySource = new Map();
+  for (const job of jobs) {
+    if (!bySource.has(job.source)) bySource.set(job.source, []);
+    bySource.get(job.source).push(job);
+  }
+  const queues = [...bySource.values()];
+  const out = [];
+  while (out.length < jobs.length) {
+    let pushedAny = false;
+    for (const q of queues) {
+      if (q.length) {
+        out.push(q.shift());
+        pushedAny = true;
+      }
+    }
+    if (!pushedAny) break;
+  }
+  return out;
 }
 
 // ---- seen-set persistence ------------------------------------------------
@@ -186,28 +362,53 @@ async function main() {
     return;
   }
 
+  const dedupedJobs = dedupeCrossPosted(allJobs);
+  if (dedupedJobs.length !== allJobs.length) {
+    console.log(
+      `Dropped ${allJobs.length - dedupedJobs.length} cross-posted duplicate(s) (VacancyBox/VacancyMail overlap).`
+    );
+  }
+
   const { ids: seenIds, bootstrapped } = await loadSeen();
   const seenSet = new Set(seenIds);
-  const allIds = allJobs.map((j) => j.id);
+  const allIds = dedupedJobs.map((j) => j.id);
 
   if (!bootstrapped) {
-    // First run: don't spam every currently-live listing. Seed the seen
-    // set with everything we see right now and notify on nothing.
+    // First run (or a new source added to an already-bootstrapped file):
+    // don't spam every currently-live listing. Seed the seen set with
+    // everything we see right now and notify on nothing. Merge rather
+    // than replace, so this never discards already-accumulated history
+    // from sources that aren't part of this particular run's fetch.
+    const merged = Array.from(new Set([...seenIds, ...allIds]));
     console.log(
-      `Bootstrap run: seeding ${allIds.length} listing IDs as already-seen, no notifications sent.`
+      `Bootstrap run: seeding ${merged.length} listing IDs as already-seen (${allIds.length} from this run, ${seenIds.length} carried over), no notifications sent.`
     );
-    await saveSeen(allIds, true);
+    await saveSeen(merged, true);
     return;
   }
 
-  const matched = allJobs.filter((j) => matches(j, keywords, excludeKeywords));
+  // Zimbabwe is the home market: notify on every new posting there
+  // regardless of keyword, since local postings (sales, admin,
+  // apprenticeships...) rarely match the tech-specific keyword profile
+  // built for the international sources but are still wanted.
+  const matched = dedupedJobs.filter(
+    (j) => ZIM_SOURCES.has(j.source) || matches(j, keywords, excludeKeywords)
+  );
   const newMatches = matched.filter((j) => !seenSet.has(j.id));
 
   console.log(
     `${matched.length} listings matched the keyword profile, ${newMatches.length} are new.`
   );
 
-  const toSend = newMatches.slice(0, MAX_NOTIFY_PER_RUN);
+  // Zimbabwe jobs are the priority, not an equal-weighted source among
+  // nine others: send every new Zim match uncapped, then fill whatever
+  // cap room is left with a fair round-robin across the international
+  // sources (RemoteOK/Arbeitnow/WeWorkRemotely/Adzuna-per-country) so none
+  // of those crowds out the rest on a busy run.
+  const zimMatches = newMatches.filter((j) => ZIM_SOURCES.has(j.source));
+  const otherMatches = newMatches.filter((j) => !ZIM_SOURCES.has(j.source));
+  const otherSlots = Math.max(0, MAX_NOTIFY_PER_RUN - zimMatches.length);
+  const toSend = [...zimMatches, ...interleaveBySource(otherMatches).slice(0, otherSlots)];
   for (const job of toSend) {
     await sendTelegram(formatJob(job));
   }
